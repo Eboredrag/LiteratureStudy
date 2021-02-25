@@ -3,7 +3,6 @@ import plotly.express as px
 import plotly.graph_objects as go
 import plotly.graph_objects as go
 from collections import Counter
-import random
 
 # ---------------------- BEGIN CHART TYPES ----------------------
 def plot_piechart(data_lst):
@@ -42,7 +41,7 @@ def plot_bargraph(tot_dict, x_axis_title, y_axis_title):
         xaxis_title=x_axis_title,
         yaxis_title=y_axis_title,
         font=dict(
-            size=18
+            size=12
         )
     )
     fig.show() 
@@ -71,7 +70,7 @@ def plot_bubble_scatter(new_data_df, x_axis_title, y_axis_title):
                 mode='markers+text',
                 marker=dict(                    
                     size=list(map(set_size, total_df["count"])),
-                    colorscale='Viridis'
+                    colorscale="Viridis"
                 )
             )
         ]
@@ -83,24 +82,16 @@ def plot_bubble_scatter(new_data_df, x_axis_title, y_axis_title):
         xaxis_title=x_axis_title,
         yaxis_title=y_axis_title,
         font=dict(
-            size=18
+            size=12
         )
     )
 
     fig.show()    
 
+
 def set_size(count):
-    # Enlarges the bubble in bubble scatter plot based on value.
-    if count == 1: 
-        return 20
-    elif count == 2:
-        return 24
-    elif count == 3:
-        return 28
-    elif count == 4:
-        return 32                        
-    else:
-        return count * 7      
+    base_len = 20
+    return base_len + (count * 2)
 
 # ---------------------- END CHART TYPES ----------------------
 
@@ -125,11 +116,35 @@ def create_publication_year_and_type(data):
         "year": data["Year(RQ1)"]
     })
 
+    temp_counter = Counter(new_data_df["type"].to_list())
+    
+    for key, val in temp_counter.items():
+        print(key, val)
+    
+
+    new_data_df = new_data_df[(new_data_df["year"] >= 2012) & (new_data_df["year"] < 2020) ]
+
     plot_bubble_scatter(new_data_df, "Year", "Publication venue")        
+
+def create_research_year_and_type(data):
+    new_data_df = pd.DataFrame({
+        "type": data["Research Strategy(RQ1)"].str.lower().str.capitalize(),
+        "year": data["Year(RQ1)"]
+    })
+
+    new_data_df = new_data_df[(new_data_df["year"] >= 2012) & (new_data_df["year"] < 2020) ]
+
+    plot_bubble_scatter(new_data_df, "Year", "Research strategy")            
 
 def create_publication_type(data):
     pub_lst = data["Publication Type(RQ1)"].str.lower().str.capitalize().to_list()
-    plot_piechart(pub_lst)
+    pub_dict = Counter(pub_lst)
+    plot_bargraph(pub_dict, "Count", "Publication type")
+
+def create_research_strategy(data):
+    research_strat = data["Research Strategy(RQ1)"].str.lower().str.capitalize().to_list()
+    res_dict = Counter(research_strat)
+    plot_bargraph(res_dict, "Count", "Research type")
 
 # ---------------------- END RQ1 CODE ----------------------
 
@@ -140,16 +155,33 @@ def tactic_correlation(data):
         'tactics': data["Tactics"]
     }
     tot_dict = {}
-
-    for i in range(len(new_data_df["p_id"])):
-        temp_id = new_data_df["p_id"][i]
-        for val in new_data_df["tactics"][i].splitlines():
-            if val.startswith("-"):
-                val = val[1:].strip().lower().capitalize()
-                if val in tot_dict.keys():
-                    tot_dict[val].append(temp_id)
+    
+    paper_index = 0
+    # while count < 98:
+    for val in new_data_df["tactics"]:
+        for sub_val in val.splitlines():
+            if sub_val.startswith("-"):
+                sub_val = sub_val[1:].strip().lower().capitalize()
+                if sub_val in tot_dict.keys():
+                    tot_dict[sub_val].append(paper_index)
                 else:
-                    tot_dict[val] = [temp_id]     
+                    tot_dict[sub_val] = [paper_index]
+        paper_index += 1                           
+                       
+
+    # for i in new_data_df['p_id'].to_list():
+        # print(new_data_df)
+        # for val in new_data_df["tactics"][i].splitlines():
+            # pass
+        #     if val.startswith("-"):
+        #         val = val[1:].strip().lower().capitalize()
+        #         if val in tot_dict.keys():
+        #             tot_dict[val].append(i)
+        #         else:
+        #             tot_dict[val] = [i]     
+
+    # return    
+    
 
     tot_dict = {key.split("(")[0].strip(): val for key, val in tot_dict.items() if len(val) >= 10}
 
@@ -338,8 +370,9 @@ def tactic_mapping(data):
     tempie_dict = dict(sorted(tempie_dict.items(), key=lambda item: item[1], reverse=True))
 
     # Uncommen this part to show all the tactics and how often they occured accross the primary studies. 
-    # for key, val in tempie_dict.items():
-        # print("{} & {} \\\\ \\hline".format(key, val))
+    for key, val in tempie_dict.items():
+        if val >= 10:
+            print("{} & {} \\\\ \\hline".format(key, val))
         
 
     count_qa_at_dict = dict(sorted(count_qa_at_dict.items(), key=lambda item:item[1][1], reverse=True))
@@ -375,15 +408,54 @@ def tactic_tradeoff(data):
     # Uncomment this to create latex table code for which quality attributes comes up in trade-offs accross the primary studies. 
     for key, val in temp_dict.items():
         for item in val:
-            print("{} & {} \\\\ \\hline".format(key.strip(), item.strip()))       
+            print("{} & {} \\\\ \\hline".format(key.strip(), item.strip()))                   
+  
+
+    print(count)
 
     qa_trade_off_lst = data["QA Tradeoff? (RQ2)"].to_list()
 
-    # Uncommen this line to create a piechart with the papers that have trade-offs and who don't.
-    # plot_piechart(qa_trade_off_lst)                
+    qa_trade_off_dict = Counter(qa_trade_off_lst)
 
-# ---------------------- BEGIN RQ2 CODE ----------------------
+    plot_bargraph(qa_trade_off_dict, "Count", "Trade-off")          
 
+# ---------------------- END RQ2 CODE ----------------------
+
+# ------------ BEGIN PARAMETERS NOT CHOSEN CODE ------------
+def create_architectural_style(data_df):
+    arch_style_lst = data_df["Architectural Style(RQ2)"].str.strip().to_list()
+    arch_style_dict = Counter(arch_style_lst)
+
+    plot_bargraph(arch_style_dict, "a", "b")
+
+def create_application_domain(data_df):
+    domains = data_df["Application Domain(RQ2)"].str.strip().to_list()
+    unique_domains = set(domains)
+    # for domain in unique_domains:
+        # print(domain)
+    
+    domains_count = Counter(domains)
+    domains_count = dict(sorted(domains_count.items(), key = lambda item: item[1], reverse=True))
+    for key, val in domains_count.items():
+        print(key, val)
+
+def create_application_field(data_df):
+    fields = data_df["Application Field (RQ3)"].str.strip().to_list()
+    fields_dict = Counter(fields)
+
+    # plot_bargraph(fields_dict, "a", "b")
+
+def create_evidence_type(data):
+    evi_type = data["Type of Evidence (RQ2)"].str.strip().to_list()
+    evi_type_dict = Counter(evi_type)
+
+    for key, val in evi_type_dict.items():
+        temp = 100/98*val
+        print("{} {} {}".format(key, val, temp))
+
+    # plot_bargraph(evi_type_dict, "Count", "Evidence type")
+
+# ------------ END PARAMETERS NOT CHOSEN CODE ------------
 if __name__ == "__main__":
     xlsx_file = "ExtractedData.xlsx"
     data_df = pd.read_excel(xlsx_file, sheet_name="Data")
@@ -391,13 +463,28 @@ if __name__ == "__main__":
 
     # Remove unnecessary columns introduced by the Google Sheet download.
     data_df = data_df.drop(data_df.iloc[:, 30:45], axis = 1) 
+    
+    # Remove the technical reports from the dataset
+    data_df = data_df[data_df["Publication Type(RQ1)"] != "Technical report"]
+    
 
     # RQ1
-    # create_publication_type(data_df)
-    # create_publication_year_and_type(data_df)
     # create_publication_venue(data_df)
+    # create_publication_year_and_type(data_df)
+    # create_publication_type(data_df)
+    # create_research_year_and_type(data_df)
+    # create_research_strategy(data_df)
 
     # RQ2
-    # tactic_mapping(data_df)
+    tactic_mapping(data_df)
     # tactic_correlation(data_df)
     # tactic_tradeoff(data_df)
+
+    # Not chosen parameters.
+    # create_architectural_style(data_df)
+    # create_application_domain(data_df)
+    # create_application_field(data_df)
+    # create_evidence_type(data_df)
+
+
+    
